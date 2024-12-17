@@ -1,30 +1,34 @@
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import AsyncSessionLocal
+from app.crud.base import CRUDBase
 from app.models.meeting_room import MeetingRoom
-from app.schemas.meeting_room import MeetingRoomCreate
 
 
-async def create_meeting_room(new_room: MeetingRoomCreate) -> MeetingRoom:
-    new_room_data = new_room.dict()
-    db_room = MeetingRoom(**new_room_data)
-    async with AsyncSessionLocal() as session:
-        session.add(db_room)
-        await session.commit()
-        await session.refresh(db_room)
-    return db_room
+# Создаем новый класс, унаследованный от CRUDBase.
+class CRUDMeetingRoom(CRUDBase):
 
-
-async def get_room_id_by_name(room_name: str) -> Optional[int]:
-    async with AsyncSessionLocal() as session:
-        # Получаем объект класса Result.
+    # Преобразуем функцию в метод класса.
+    async def get_room_id_by_name(
+            # Дописываем параметр self.
+            # В качестве альтернативы здесь можно
+            # применить декоратор @staticmethod.
+            self,
+            room_name: str,
+            session: AsyncSession,
+    ) -> Optional[int]:
         db_room_id = await session.execute(
             select(MeetingRoom.id).where(
                 MeetingRoom.name == room_name
             )
         )
-        # Извлекаем из него конкретное значение.
         db_room_id = db_room_id.scalars().first()
-    return db_room_id
+        return db_room_id
+
+
+# Объект crud наследуем уже не от CRUDBase,
+# а от только что созданного класса CRUDMeetingRoom.
+# Для инициализации передаем модель, как и в CRUDBase.
+meeting_room_crud = CRUDMeetingRoom(MeetingRoom)
